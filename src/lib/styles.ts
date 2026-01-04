@@ -1,0 +1,15 @@
+export const styles = {
+  page: "min-h-screen bg-background text-foreground",
+  container: "mx-auto w-full max-w-6xl px-4 py-6",
+  pageHeader: "mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+  title: "text-2xl font-semibold tracking-tight",
+  subtitle: "text-sm text-muted-foreground",
+  card: "bg-card text-card-foreground",
+  grid2: "grid gap-4 sm:grid-cols-2",
+  grid3: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3",
+  actionsRow: "flex flex-col gap-2 sm:flex-row sm:items-center",
+  inputRow: "grid gap-2",
+  form: "grid gap-4",
+  tableWrap: "overflow-hidden rounded-lg border border-border",
+  linkMuted: "text-muted-foreground hover:text-foreground transition-colors",
+};
