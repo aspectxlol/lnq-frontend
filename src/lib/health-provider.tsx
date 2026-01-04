@@ -17,7 +17,7 @@ export function HealthCheckProvider({ children }: { children: React.ReactNode })
   const [isHealthy, setIsHealthy] = React.useState(true);
   const [isChecking, setIsChecking] = React.useState(false);
   const [lastCheck, setLastCheck] = React.useState<number | null>(null);
-  const [hasShownError, setHasShownError] = React.useState(false);
+  const hasShownErrorRef = React.useRef(false);
 
   const checkHealth = React.useCallback(async (showToast = true) => {
     setIsChecking(true);
@@ -27,30 +27,23 @@ export function HealthCheckProvider({ children }: { children: React.ReactNode })
     setLastCheck(Date.now());
     setIsChecking(false);
 
-    if (!result.ok && showToast && !hasShownError) {
+    if (!result.ok && showToast && !hasShownErrorRef.current) {
       toast.error("Backend connection failed", {
         description: `${result.message}. Check your backend URL in settings.`,
         duration: 5000,
       });
-      setHasShownError(true);
-    } else if (result.ok && hasShownError) {
+      hasShownErrorRef.current = true;
+    } else if (result.ok && hasShownErrorRef.current) {
       toast.success("Backend connection restored");
-      setHasShownError(false);
+      hasShownErrorRef.current = false;
     }
 
     return result;
-  }, [hasShownError]);
+  }, []);
 
   // Check health on mount and when backend URL changes
   React.useEffect(() => {
     checkHealth(true);
-
-    // Poll every 30 seconds
-    const interval = setInterval(() => {
-      checkHealth(false);
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, [checkHealth]);
 
   // Listen for storage events (backend URL changes in other tabs)
