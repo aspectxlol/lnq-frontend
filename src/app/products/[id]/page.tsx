@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/image-upload";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatIDR } from "@/lib/format";
+import { formatIDR, formatNumber, parseFormattedNumber } from "@/lib/format";
 import { styles } from "@/lib/styles";
 import { useProduct, useUpdateProduct, useDeleteProduct } from "@/lib/queries";
 
@@ -37,13 +37,13 @@ export default function ProductDetailPage() {
     if (product) {
       setName(product.name);
       setDescription(product.description ?? "");
-      setPrice(String(product.price));
+      setPrice(formatNumber(product.price));
     }
   }, [product]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
-    const parsedPrice = Number.parseInt(price || "", 10);
+    const parsedPrice = Number.parseInt(parseFormattedNumber(price) || "", 10);
     if (!Number.isInteger(parsedPrice)) {
       toast.error("Price must be an integer");
       return;
@@ -144,7 +144,7 @@ export default function ProductDetailPage() {
                   id="price"
                   inputMode="numeric"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                    onChange={(e) => setPrice(formatNumber(e.target.value))}
                   required
                 />
               </div>

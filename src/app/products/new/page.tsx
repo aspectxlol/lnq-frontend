@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/image-upload";
 import { styles } from "@/lib/styles";
 import { useCreateProduct } from "@/lib/queries";
+import { formatNumber, parseFormattedNumber } from "@/lib/format";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function NewProductPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsedPrice = Number.parseInt(price || "", 10);
+    const parsedPrice = Number.parseInt(parseFormattedNumber(price) || "", 10);
     if (!Number.isInteger(parsedPrice)) {
       toast.error("Price must be an integer");
       return;
@@ -86,7 +87,7 @@ export default function NewProductPage() {
                 id="price"
                 inputMode="numeric"
                 value={price}
-                onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                onChange={(e) => setPrice(formatNumber(e.target.value))}
                 required
               />
             </div>
