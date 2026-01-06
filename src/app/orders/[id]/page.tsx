@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatIDR } from "@/lib/format";
+import { formatIDR, formatDate } from "@/lib/format";
 import { styles } from "@/lib/styles";
 import { useOrder, useUpdateOrder, useDeleteOrder, usePrintOrder } from "@/lib/queries";
 import type { Order } from "@/lib/types";
@@ -85,7 +85,20 @@ export default function OrderDetailPage() {
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.title}>Order #{id}</h1>
-          <p className={styles.subtitle}>{order ? `Total: ${formatIDR(orderTotal(order))}` : "Order details"}</p>
+          <p className={styles.subtitle}>
+            {order ? (
+              <>
+                {order.pickupDate && (
+                  <>
+                    Pickup: {formatDate(order.pickupDate)} • {" "}
+                  </>
+                )}
+                Total: {formatIDR(orderTotal(order))}
+              </>
+            ) : (
+              "Order details"
+            )}
+          </p>
         </div>
         <div className={styles.actionsRow}>
           <Button

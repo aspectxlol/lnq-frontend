@@ -17,7 +17,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { formatIDR } from "@/lib/format";
+import { formatIDR, formatDate } from "@/lib/format";
 import { styles } from "@/lib/styles";
 import { useOrders, useDeleteOrder } from "@/lib/queries";
 import type { Order } from "@/lib/types";
@@ -50,7 +50,10 @@ function getMonthDays(year: number, month: number) {
 }
 
 function formatDateKey(date: Date) {
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export default function OrdersPage() {
@@ -207,9 +210,7 @@ export default function OrdersPage() {
                         </TableCell>
                         <TableCell>{o.customerName}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {o.pickupDate
-                            ? new Date(o.pickupDate + "T00:00:00").toLocaleDateString()
-                            : "—"}
+                          {o.pickupDate ? formatDate(o.pickupDate) : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{o.items.length}</TableCell>
                         <TableCell>{formatIDR(orderTotal(o))}</TableCell>
