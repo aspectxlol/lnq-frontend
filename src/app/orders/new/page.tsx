@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Combobox } from "@/components/ui/combobox";
@@ -17,7 +18,7 @@ import { styles } from "@/lib/styles";
 import { useProducts, useCreateOrder } from "@/lib/queries";
 import type { Product } from "@/lib/types";
 
-type Item = { productId: number; amount: number };
+type Item = { productId: number; amount: number; notes: string };
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function NewOrderPage() {
 
   const [customerName, setCustomerName] = React.useState("");
   const [pickupDate, setPickupDate] = React.useState("");
+  const [orderNotes, setOrderNotes] = React.useState("");
   const [items, setItems] = React.useState<Item[]>([]);
   const [selectedProduct, setSelectedProduct] = React.useState<string>("");
 
@@ -44,7 +46,7 @@ export default function NewOrderPage() {
   function addProduct(productId: number) {
     setItems((prev) => {
       const idx = prev.findIndex((it) => it.productId === productId);
-      if (idx === -1) return [...prev, { productId, amount: 1 }];
+      if (idx === -1) return [...prev, { productId, amount: 1, notes: "" }];
       const next = [...prev];
       next[idx] = { ...next[idx]!, amount: next[idx]!.amount + 1 };
       return next;
@@ -66,6 +68,12 @@ export default function NewOrderPage() {
     );
   }
 
+  function setItemNotes(productId: number, notes: string) {
+    setItems((prev) =>
+      prev.map((it) => (it.productId === productId ? { ...it, notes } : it)),
+    );
+  }
+
   const total = items.reduce((sum, it) => {
     const p = byId.get(it.productId);
     return sum + (p ? p.price * it.amount : 0);
@@ -82,7 +90,12 @@ export default function NewOrderPage() {
       await createMutation.mutateAsync({
         customerName,
         pickupDate: pickupDate || null,
-        items,
+        notes: orderNotes || undefined,
+        items: items.map((it) => ({
+          productId: it.productId,
+          amount: it.amount,
+          notes: it.notes || undefined,
+        })),
       });
       toast.success("Order created");
       router.push("/orders");
@@ -121,6 +134,17 @@ export default function NewOrderPage() {
               />
             </div>
 
+            <div className={styles.inputRow}>
+              <Label htmlFor="orderNotes">Order notes (optional)</Label>
+              <Textarea
+                id="orderNotes"
+                placeholder="e.g., Call when ready, Rush order"
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+
             <div className="flex gap-2">
               <div className="flex-1">
                 <Combobox
@@ -150,13 +174,14 @@ export default function NewOrderPage() {
                     <TableHead>Item</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Qty</TableHead>
+                    <TableHead>Notes</TableHead>
                     <TableHead>Line total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-muted-foreground">
+                      <TableCell colSpan={5} className="text-muted-foreground">
                         No items yet.
                       </TableCell>
                     </TableRow>
@@ -177,6 +202,13 @@ export default function NewOrderPage() {
                                   Number.parseInt(e.target.value.replace(/[^0-9]/g, "") || "0", 10),
                                 )
                               }
+                            />
+                          </TableCell>
+                          <TableCell className="w-[200px]">
+                            <Input
+                              placeholder="e.g., Extra hot, No sugar"
+                              value={it.notes}
+                              onChange={(e) => setItemNotes(it.productId, e.target.value)}
                             />
                           </TableCell>
                           <TableCell>{p ? formatIDR(p.price * it.amount) : "—"}</TableCell>

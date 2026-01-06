@@ -26,6 +26,7 @@ export type OrderItem = {
   orderId: number;
   productId: number;
   amount: number;
+  notes: string | null;
   product: Product | null;
 };
 
@@ -33,6 +34,7 @@ export type Order = {
   id: number;
   customerName: string;
   pickupDate: string | null;
+  notes: string | null;
   items: OrderItem[];
   createdAt: string;
 };
@@ -40,12 +42,15 @@ export type Order = {
 export type CreateOrderInput = {
   customerName: string;
   pickupDate?: string | null;
-  items: Array<{ productId: number; amount: number }>;
+  notes?: string;
+  items: Array<{ productId: number; amount: number; notes?: string }>;
 };
 
 export type UpdateOrderInput = {
   customerName?: string;
   pickupDate?: string | null;
+  notes?: string;
+  items?: Array<{ productId: number; amount: number; notes?: string }>;
 };
 
 // API Response wrapper types

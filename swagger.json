@@ -9,10 +9,6 @@
     {
       "url": "http://localhost:3000",
       "description": "Development server"
-    },
-    {
-      "url": "http://192.168.0.79:3000",
-      "description": "Backend server (example used for images)"
     }
   ],
   "paths": {
@@ -142,6 +138,10 @@
                             "format": "date",
                             "nullable": true
                           },
+                          "notes": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -162,6 +162,10 @@
                                 },
                                 "amount": {
                                   "type": "integer"
+                                },
+                                "notes": {
+                                  "type": "string",
+                                  "nullable": true
                                 },
                                 "product": {
                                   "type": "object",
@@ -192,7 +196,8 @@
                     {
                       "id": 10,
                       "customerName": "Alice",
-                      "pickupDate": "2026-01-05",
+                      "pickupDate": null,
+                      "notes": null,
                       "createdAt": "2026-01-04T00:00:00.000Z",
                       "items": [
                         {
@@ -200,6 +205,7 @@
                           "orderId": 10,
                           "productId": 1,
                           "amount": 2,
+                          "notes": null,
                           "product": {
                             "id": 1,
                             "name": "Espresso",
@@ -236,7 +242,10 @@
                   },
                   "pickupDate": {
                     "type": "string",
-                    "format": "date",
+                    "format": "date"
+                  },
+                  "notes": {
+                    "type": "string",
                     "nullable": true
                   },
                   "items": {
@@ -254,6 +263,9 @@
                         },
                         "amount": {
                           "type": "integer"
+                        },
+                        "notes": {
+                          "type": "string"
                         }
                       }
                     }
@@ -261,12 +273,14 @@
                 }
               },
               "example": {
+                "notes": "Please call when ready",
                 "customerName": "Alice",
-                "pickupDate": "2026-01-05",
+                "pickupDate": null,
                 "items": [
                   {
                     "productId": 1,
-                    "amount": 2
+                    "amount": 2,
+                    "notes": "Extra hot"
                   }
                 ]
               }
@@ -451,8 +465,32 @@
                   "pickupDate": {
                     "type": "string",
                     "format": "date",
-                    "nullable": true,
-                    "description": "Date-only string in YYYY-MM-DD (no time component)"
+                    "nullable": true
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "productId",
+                        "amount"
+                      ],
+                      "properties": {
+                        "productId": {
+                          "type": "integer"
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "notes": {
+                          "type": "string"
+                        }
+                      }
+                    }
                   }
                 }
               },
@@ -694,7 +732,7 @@
                       "name": "Espresso",
                       "description": "Single shot",
                       "price": 25000,
-                      "imageId": "1767687756522-H037.jpeg",
+                      "imageId": null,
                       "createdAt": "2026-01-04T00:00:00.000Z"
                     }
                   ]
@@ -932,7 +970,7 @@
                     "name": "Espresso",
                     "description": "Single shot",
                     "price": 25000,
-                    "imageId": "1767687756522-H037.jpeg",
+                    "imageId": null,
                     "createdAt": "2026-01-04T00:00:00.000Z"
                   }
                 }
@@ -1000,8 +1038,7 @@
                     "type": "integer"
                   },
                   "imageId": {
-                    "type": "string",
-                    "description": "Filename for image stored on backend. Use GET /api/images/{filename} (e.g. GET /api/images/1767687756522-H037.jpeg) to retrieve."
+                    "type": "string"
                   }
                 }
               },
