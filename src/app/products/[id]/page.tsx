@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR, formatNumber, parseFormattedNumber } from "@/lib/format";
 import { styles } from "@/lib/styles";
 import { useProduct, useUpdateProduct, useDeleteProduct } from "@/lib/queries";
+import { buildBackendUrl } from "@/lib/backend";
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
@@ -150,11 +151,12 @@ export default function ProductDetailPage() {
               </div>
 
               <div className={styles.inputRow}>
-                <Label>Update Image (optional)</Label>
+                <Label>Image</Label>
                 <ImageUpload
                   value={image}
                   onChange={setImage}
                   disabled={updateMutation.isPending}
+                  existingImageUrl={product?.imageId ? buildBackendUrl(`/api/images/${product.imageId}`) : null}
                 />
               </div>
 

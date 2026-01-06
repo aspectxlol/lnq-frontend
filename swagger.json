@@ -9,9 +9,102 @@
     {
       "url": "http://localhost:3000",
       "description": "Development server"
+    },
+    {
+      "url": "http://192.168.0.79:3000",
+      "description": "Backend server (example used for images)"
     }
   ],
   "paths": {
+    "/api/images/{filename}": {
+      "get": {
+        "summary": "Get an image by filename",
+        "tags": [
+          "Images"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "filename",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "Image filename (e.g., 1767687756522-H037.jpeg)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image file",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Image not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Image not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/orders": {
       "get": {
         "summary": "Get all orders with their items",
@@ -46,7 +139,7 @@
                           },
                           "pickupDate": {
                             "type": "string",
-                            "format": "date-time",
+                            "format": "date",
                             "nullable": true
                           },
                           "createdAt": {
@@ -99,7 +192,7 @@
                     {
                       "id": 10,
                       "customerName": "Alice",
-                      "pickupDate": null,
+                      "pickupDate": "2026-01-05",
                       "createdAt": "2026-01-04T00:00:00.000Z",
                       "items": [
                         {
@@ -143,7 +236,7 @@
                   },
                   "pickupDate": {
                     "type": "string",
-                    "format": "date-time",
+                    "format": "date",
                     "nullable": true
                   },
                   "items": {
@@ -169,7 +262,7 @@
               },
               "example": {
                 "customerName": "Alice",
-                "pickupDate": null,
+                "pickupDate": "2026-01-05",
                 "items": [
                   {
                     "productId": 1,
@@ -252,7 +345,7 @@
                         },
                         "pickupDate": {
                           "type": "string",
-                          "format": "date-time",
+                          "format": "date",
                           "nullable": true
                         },
                         "createdAt": {
@@ -357,13 +450,14 @@
                   },
                   "pickupDate": {
                     "type": "string",
-                    "format": "date-time",
-                    "nullable": true
+                    "format": "date",
+                    "nullable": true,
+                    "description": "Date-only string in YYYY-MM-DD (no time component)"
                   }
                 }
               },
               "example": {
-                "pickupDate": "2026-01-05T08:00:00.000Z"
+                "pickupDate": "2026-01-05"
               }
             }
           }
@@ -600,7 +694,7 @@
                       "name": "Espresso",
                       "description": "Single shot",
                       "price": 25000,
-                      "imageId": null,
+                      "imageId": "1767687756522-H037.jpeg",
                       "createdAt": "2026-01-04T00:00:00.000Z"
                     }
                   ]
@@ -838,7 +932,7 @@
                     "name": "Espresso",
                     "description": "Single shot",
                     "price": 25000,
-                    "imageId": null,
+                    "imageId": "1767687756522-H037.jpeg",
                     "createdAt": "2026-01-04T00:00:00.000Z"
                   }
                 }
@@ -906,7 +1000,8 @@
                     "type": "integer"
                   },
                   "imageId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Filename for image stored on backend. Use GET /api/images/{filename} (e.g. GET /api/images/1767687756522-H037.jpeg) to retrieve."
                   }
                 }
               },

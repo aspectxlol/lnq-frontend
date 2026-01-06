@@ -33,7 +33,7 @@ export default function NewProductPage() {
     }
 
     try {
-      const created = await createMutation.mutateAsync(
+      await createMutation.mutateAsync(
         image
           ? (() => {
             const form = new FormData();
@@ -50,7 +50,7 @@ export default function NewProductPage() {
           },
       );
       toast.success("Product created");
-      router.push(`/products/${created.id}`);
+      router.push("/products");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create product");
     }

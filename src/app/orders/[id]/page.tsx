@@ -4,6 +4,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { toast } from "sonner";
+import { Printer } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR } from "@/lib/format";
 import { styles } from "@/lib/styles";
-import { useOrder, useUpdateOrder, useDeleteOrder } from "@/lib/queries";
+import { useOrder, useUpdateOrder, useDeleteOrder, usePrintOrder } from "@/lib/queries";
 import type { Order } from "@/lib/types";
 
 function orderTotal(order: Order) {
@@ -29,6 +30,7 @@ export default function OrderDetailPage() {
   const { data: order, isLoading: loading } = useOrder(id);
   const updateMutation = useUpdateOrder(id);
   const deleteMutation = useDeleteOrder();
+  const printMutation = usePrintOrder();
 
   const [customerName, setCustomerName] = React.useState("");
   const [pickupDate, setPickupDate] = React.useState("");
@@ -37,16 +39,8 @@ export default function OrderDetailPage() {
   React.useEffect(() => {
     if (order) {
       setCustomerName(order.customerName);
-      // Convert ISO date to datetime-local format (YYYY-MM-DDTHH:mm)
-      if (order.pickupDate) {
-        const date = new Date(order.pickupDate);
-        const localIso = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
-        setPickupDate(localIso);
-      } else {
-        setPickupDate("");
-      }
+      // pickupDate is now a date-only string (YYYY-MM-DD)
+      setPickupDate(order.pickupDate ?? "");
     }
   }, [order]);
 
@@ -55,7 +49,7 @@ export default function OrderDetailPage() {
     try {
       await updateMutation.mutateAsync({
         customerName,
-        pickupDate: pickupDate ? new Date(pickupDate).toISOString() : null,
+        pickupDate: pickupDate || null,
       });
       toast.success("Order updated");
     } catch (err) {
@@ -73,6 +67,19 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function onPrint() {
+    try {
+      const result = await printMutation.mutateAsync(id);
+      if (result.printed) {
+        toast.success("Receipt printed successfully");
+      } else {
+        toast.error("Failed to print receipt");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to print receipt");
+    }
+  }
+
   return (
     <main className={styles.container}>
       <div className={styles.pageHeader}>
@@ -81,6 +88,14 @@ export default function OrderDetailPage() {
           <p className={styles.subtitle}>{order ? `Total: ${formatIDR(orderTotal(order))}` : "Order details"}</p>
         </div>
         <div className={styles.actionsRow}>
+          <Button
+            variant="outline"
+            onClick={onPrint}
+            disabled={loading || printMutation.isPending}
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            {printMutation.isPending ? "Printing…" : "Print Receipt"}
+          </Button>
           <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={loading}>
             Delete
           </Button>
@@ -117,7 +132,7 @@ export default function OrderDetailPage() {
                 <Label htmlFor="pickupDate">Pickup date (optional)</Label>
                 <Input
                   id="pickupDate"
-                  type="datetime-local"
+                  type="date"
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
                 />

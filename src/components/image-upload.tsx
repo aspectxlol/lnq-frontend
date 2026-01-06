@@ -10,9 +10,10 @@ interface ImageUploadProps {
   value: File | null;
   onChange: (file: File | null) => void;
   disabled?: boolean;
+  existingImageUrl?: string | null;
 }
 
-export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, disabled, existingImageUrl }: ImageUploadProps) {
   const [isDragging, setIsDragging] = React.useState(false);
   const [preview, setPreview] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -26,6 +27,9 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
       setPreview(null);
     }
   }, [value]);
+
+  // Use either the new file preview or the existing image URL
+  const displayUrl = preview || existingImageUrl || null;
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -93,13 +97,14 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
           id="image-upload"
         />
 
-        {preview ? (
+        {displayUrl ? (
           <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
             <Image
-              src={preview}
+              src={displayUrl}
               alt="Preview"
               fill
               className="object-contain"
+              unoptimized={!!existingImageUrl && !preview}
             />
             {!disabled && (
               <Button

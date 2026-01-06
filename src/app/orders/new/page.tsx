@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Combobox } from "@/components/ui/combobox";
 import { formatIDR } from "@/lib/format";
 import { styles } from "@/lib/styles";
 import { useProducts, useCreateOrder } from "@/lib/queries";
@@ -27,12 +28,18 @@ export default function NewOrderPage() {
   const [customerName, setCustomerName] = React.useState("");
   const [pickupDate, setPickupDate] = React.useState("");
   const [items, setItems] = React.useState<Item[]>([]);
+  const [selectedProduct, setSelectedProduct] = React.useState<string>("");
 
   const byId = React.useMemo(() => {
     const m = new Map<number, Product>();
     for (const p of products) m.set(p.id, p);
     return m;
   }, [products]);
+
+  const productOptions = React.useMemo(
+    () => products.map((p) => ({ value: String(p.id), label: `${p.name} — ${formatIDR(p.price)}` })),
+    [products],
+  );
 
   function addProduct(productId: number) {
     setItems((prev) => {
@@ -42,6 +49,13 @@ export default function NewOrderPage() {
       next[idx] = { ...next[idx]!, amount: next[idx]!.amount + 1 };
       return next;
     });
+  }
+
+  function handleAddSelectedProduct() {
+    if (selectedProduct) {
+      addProduct(Number.parseInt(selectedProduct, 10));
+      setSelectedProduct("");
+    }
   }
 
   function setAmount(productId: number, amount: number) {
@@ -65,13 +79,13 @@ export default function NewOrderPage() {
     }
 
     try {
-      const created = await createMutation.mutateAsync({
+      await createMutation.mutateAsync({
         customerName,
-        pickupDate: pickupDate ? new Date(pickupDate).toISOString() : null,
+        pickupDate: pickupDate || null,
         items,
       });
       toast.success("Order created");
-      router.push(`/orders/${created.id}`);
+      router.push("/orders");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create order");
     }
@@ -101,10 +115,32 @@ export default function NewOrderPage() {
               <Label htmlFor="pickupDate">Pickup date (optional)</Label>
               <Input
                 id="pickupDate"
-                type="datetime-local"
+                type="date"
                 value={pickupDate}
                 onChange={(e) => setPickupDate(e.target.value)}
               />
+            </div>
+
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Combobox
+                  options={productOptions}
+                  value={selectedProduct}
+                  onValueChange={setSelectedProduct}
+                  placeholder="Select a product..."
+                  searchPlaceholder="Search products..."
+                  emptyText="No products found."
+                  disabled={loadingProducts}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleAddSelectedProduct}
+                disabled={!selectedProduct || loadingProducts}
+              >
+                Add
+              </Button>
             </div>
 
             <div className={styles.tableWrap}>
@@ -166,60 +202,6 @@ export default function NewOrderPage() {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Products</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={styles.tableWrap}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-[120px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loadingProducts ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-5 w-[180px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-[100px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-[70px] ml-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : products.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-muted-foreground">
-                      No products available.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  products.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell>{formatIDR(p.price)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="secondary" size="sm" onClick={() => addProduct(p.id)}>
-                          Add
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
         </CardContent>
       </Card>
     </main>
