@@ -26,8 +26,12 @@ type ViewMode = "list" | "calendar";
 
 function orderTotal(order: Order) {
   return order.items.reduce((sum, it) => {
-    const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (it.product?.price ?? 0);
-    return sum + it.amount * price;
+    if (it.itemType === 'product') {
+      const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (it.product?.price ?? 0);
+      return sum + price * it.amount;
+    } else {
+      return sum + it.customPrice;
+    }
   }, 0);
 }
 
@@ -215,7 +219,13 @@ export default function OrdersPage() {
                         <TableCell className="text-muted-foreground">
                           {o.pickupDate ? formatDate(o.pickupDate) : "—"}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{o.items.length}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {o.items.map((it) =>
+                            it.itemType === 'product'
+                              ? (it.product?.name || `#${it.productId}`)
+                              : it.customName
+                          ).join(", ")}
+                        </TableCell>
                         <TableCell>{formatIDR(orderTotal(o))}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

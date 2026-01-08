@@ -21,15 +21,25 @@ export type UpdateProductInput = {
   imageId?: string;
 };
 
-export type OrderItem = {
-  id: number;
-  orderId: number;
-  productId: number;
-  amount: number;
-  notes: string | null;
-  priceAtSale?: number; // can be 0 (free)
-  product: Product | null;
-};
+export type OrderItem =
+  | {
+    id: number;
+    orderId: number;
+    itemType: 'product';
+    productId: number;
+    amount: number;
+    notes: string | null;
+    priceAtSale?: number;
+    product: Product | null;
+  }
+  | {
+    id: number;
+    orderId: number;
+    itemType: 'custom';
+    customName: string;
+    customPrice: number;
+    notes: string | null;
+  };
 
 export type Order = {
   id: number;
@@ -44,24 +54,42 @@ export type CreateOrderInput = {
   customerName: string;
   pickupDate?: string | null;
   notes?: string;
-  items: Array<{
-    productId: number;
-    amount: number;
-    notes?: string;
-    priceAtSale?: number; // can be 0 (free)
-  }>;
+  items: Array<
+    | {
+      itemType: 'product';
+      productId: number;
+      amount: number;
+      notes?: string;
+      priceAtSale?: number;
+    }
+    | {
+      itemType: 'custom';
+      customName: string;
+      customPrice: number;
+      notes?: string;
+    }
+  >;
 };
 
 export type UpdateOrderInput = {
   customerName?: string;
   pickupDate?: string | null;
   notes?: string;
-  items?: Array<{
-    productId: number;
-    amount: number;
-    notes?: string;
-    priceAtSale?: number; // can be 0 (free)
-  }>;
+  items?: Array<
+    | {
+      itemType: 'product';
+      productId: number;
+      amount: number;
+      notes?: string;
+      priceAtSale?: number;
+    }
+    | {
+      itemType: 'custom';
+      customName: string;
+      customPrice: number;
+      notes?: string;
+    }
+  >;
 };
 
 // API Response wrapper types

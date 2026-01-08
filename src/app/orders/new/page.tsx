@@ -18,7 +18,9 @@ import { styles } from "@/lib/styles";
 import { useProducts, useCreateOrder } from "@/lib/queries";
 import type { Product } from "@/lib/types";
 
-type Item = { productId: number; amount: number; notes: string; priceAtSale?: number };
+type Item =
+  | { itemType: 'product'; productId: number; amount: number; notes: string; priceAtSale?: number }
+  | { itemType: 'custom'; customName: string; customPrice: number; notes: string };
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -30,6 +32,8 @@ export default function NewOrderPage() {
   const [pickupDate, setPickupDate] = React.useState("");
   const [orderNotes, setOrderNotes] = React.useState("");
   const [items, setItems] = React.useState<Item[]>([]);
+  const [customName, setCustomName] = React.useState("");
+  const [customPrice, setCustomPrice] = React.useState("");
   const [selectedProduct, setSelectedProduct] = React.useState<string>("");
 
   const byId = React.useMemo(() => {
@@ -45,12 +49,25 @@ export default function NewOrderPage() {
 
   function addProduct(productId: number) {
     setItems((prev) => {
-      const idx = prev.findIndex((it) => it.productId === productId);
-      if (idx === -1) return [...prev, { productId, amount: 1, notes: "" }];
+      const idx = prev.findIndex((it) => it.itemType === 'product' && it.productId === productId);
+      if (idx === -1) return [...prev, { itemType: 'product', productId, amount: 1, notes: "" }];
       const next = [...prev];
-      next[idx] = { ...next[idx]!, amount: next[idx]!.amount + 1 };
+      const item = next[idx];
+      if (item.itemType === 'product') {
+        next[idx] = { ...item, amount: item.amount + 1 };
+      }
       return next;
     });
+  }
+
+  function addCustomItem() {
+    if (!customName.trim() || !customPrice.trim()) return;
+    setItems((prev) => [
+      ...prev,
+      { itemType: 'custom', customName: customName.trim(), customPrice: Number(customPrice), notes: "" },
+    ]);
+    setCustomName("");
+    setCustomPrice("");
   }
 
   function handleAddSelectedProduct() {
@@ -63,20 +80,28 @@ export default function NewOrderPage() {
   function setAmount(productId: number, amount: number) {
     setItems((prev) =>
       prev
-        .map((it) => (it.productId === productId ? { ...it, amount } : it))
-        .filter((it) => it.amount > 0),
+        .map((it) =>
+          it.itemType === 'product' && it.productId === productId
+            ? { ...it, amount }
+            : it
+        )
+        .filter((it) => it.itemType !== 'product' || it.amount > 0),
     );
   }
 
-  function setItemNotes(productId: number, notes: string) {
+  function setItemNotes(idx: number, notes: string) {
     setItems((prev) =>
-      prev.map((it) => (it.productId === productId ? { ...it, notes } : it)),
+      prev.map((it, i) => (i === idx ? { ...it, notes } : it)),
     );
   }
 
   const total = items.reduce((sum, it) => {
-    const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (byId.get(it.productId)?.price ?? 0);
-    return sum + price * it.amount;
+    if (it.itemType === 'product') {
+      const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (byId.get(it.productId)?.price ?? 0);
+      return sum + price * it.amount;
+    } else {
+      return sum + it.customPrice;
+    }
   }, 0);
 
   async function onSubmit(e: React.FormEvent) {
@@ -91,12 +116,24 @@ export default function NewOrderPage() {
         customerName,
         pickupDate: pickupDate || null,
         notes: orderNotes || undefined,
-        items: items.map((it) => ({
-          productId: it.productId,
-          amount: it.amount,
-          notes: it.notes || undefined,
-          priceAtSale: typeof it.priceAtSale === "number" ? it.priceAtSale : undefined,
-        })),
+        items: items.map((it) => {
+          if (it.itemType === 'product') {
+            return {
+              itemType: 'product',
+              productId: it.productId,
+              amount: it.amount,
+              notes: it.notes || undefined,
+              priceAtSale: typeof it.priceAtSale === "number" ? it.priceAtSale : undefined,
+            };
+          } else {
+            return {
+              itemType: 'custom',
+              customName: it.customName,
+              customPrice: it.customPrice,
+              notes: it.notes || undefined,
+            };
+          }
+        }),
       });
       toast.success("Order created");
       router.push("/orders");
@@ -146,7 +183,7 @@ export default function NewOrderPage() {
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-2">
               <div className="flex-1">
                 <Combobox
                   options={productOptions}
@@ -164,7 +201,25 @@ export default function NewOrderPage() {
                 onClick={handleAddSelectedProduct}
                 disabled={!selectedProduct || loadingProducts}
               >
-                Add
+                Add Product
+              </Button>
+            </div>
+            <div className="flex gap-2 mb-4">
+              <Input
+                className="flex-1"
+                placeholder="Custom item name (e.g., Ongkos Kirim)"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+              />
+              <Input
+                className="w-[120px]"
+                inputMode="numeric"
+                placeholder="Price"
+                value={customPrice}
+                onChange={(e) => setCustomPrice(e.target.value.replace(/[^0-9]/g, ""))}
+              />
+              <Button type="button" variant="secondary" onClick={addCustomItem} disabled={!customName || !customPrice}>
+                Add Custom
               </Button>
             </div>
 
@@ -187,45 +242,74 @@ export default function NewOrderPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    items.map((it) => {
-                      const p = byId.get(it.productId);
-                      const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (p?.price ?? 0);
-                      return (
-                        <TableRow key={it.productId}>
-                          <TableCell className="font-medium">{p ? p.name : `#${it.productId}`}</TableCell>
-                          <TableCell>
-                            <Input
-                              inputMode="numeric"
-                              value={typeof it.priceAtSale === "number" ? String(it.priceAtSale) : (p ? String(p.price) : "")}
-                              min={0}
-                              onChange={(e) => {
-                                const value = Number.parseInt(e.target.value.replace(/[^0-9]/g, "") || "0", 10);
-                                setItems((prev) => prev.map((item) => item.productId === it.productId ? { ...item, priceAtSale: value } : item));
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="w-[140px]">
-                            <Input
-                              inputMode="numeric"
-                              value={String(it.amount)}
-                              onChange={(e) =>
-                                setAmount(
-                                  it.productId,
-                                  Number.parseInt(e.target.value.replace(/[^0-9]/g, "") || "0", 10),
-                                )
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="w-[200px]">
-                            <Input
-                              placeholder="e.g., Extra hot, No sugar"
-                              value={it.notes}
-                              onChange={(e) => setItemNotes(it.productId, e.target.value)}
-                            />
-                          </TableCell>
-                          <TableCell>{formatIDR(price * it.amount)}</TableCell>
-                        </TableRow>
-                      );
+                      items.map((it, idx) => {
+                        if (it.itemType === 'product') {
+                          const p = byId.get(it.productId);
+                          const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (p?.price ?? 0);
+                          return (
+                          <TableRow key={`product-${it.productId}`}>
+                            <TableCell className="font-medium">{p ? p.name : `#${it.productId}`}</TableCell>
+                            <TableCell>
+                              <Input
+                                inputMode="numeric"
+                                value={typeof it.priceAtSale === "number" ? String(it.priceAtSale) : (p ? String(p.price) : "")}
+                                min={0}
+                                onChange={(e) => {
+                                  const value = Number.parseInt(e.target.value.replace(/[^0-9]/g, "") || "0", 10);
+                                  setItems((prev) => prev.map((item, i) => i === idx ? { ...item, priceAtSale: value } : item));
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell className="w-[140px]">
+                              <Input
+                                inputMode="numeric"
+                                value={String(it.amount)}
+                                onChange={(e) =>
+                                  setAmount(
+                                    it.productId,
+                                    Number.parseInt(e.target.value.replace(/[^0-9]/g, "") || "0", 10),
+                                  )
+                                }
+                              />
+                            </TableCell>
+                            <TableCell className="w-[200px]">
+                              <Input
+                                placeholder="e.g., Extra hot, No sugar"
+                                value={it.notes}
+                                onChange={(e) => setItemNotes(idx, e.target.value)}
+                              />
+                            </TableCell>
+                            <TableCell>{formatIDR(price * it.amount)}</TableCell>
+                          </TableRow>
+                        );
+                      } else {
+                        // custom item
+                        return (
+                          <TableRow key={`custom-${it.customName}`}>
+                            <TableCell className="font-medium">{it.customName}</TableCell>
+                            <TableCell>
+                              <Input
+                                inputMode="numeric"
+                                value={String(it.customPrice)}
+                                min={0}
+                                onChange={(e) => {
+                                  const value = Number.parseInt(e.target.value.replace(/[^0-9]/g, "") || "0", 10);
+                                  setItems((prev) => prev.map((item, i) => i === idx ? { ...item, customPrice: value } : item));
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell className="w-[140px] text-muted-foreground">—</TableCell>
+                            <TableCell className="w-[200px]">
+                              <Input
+                                placeholder="e.g., Catatan untuk ongkos kirim"
+                                value={it.notes}
+                                onChange={(e) => setItemNotes(idx, e.target.value)}
+                              />
+                            </TableCell>
+                            <TableCell>{formatIDR(it.customPrice)}</TableCell>
+                          </TableRow>
+                        );
+                      }
                     })
                   )}
                 </TableBody>
