@@ -20,7 +20,7 @@ import { styles } from "@/lib/styles";
 import { useOrder, useUpdateOrder, useDeleteOrder, usePrintOrder, useProducts } from "@/lib/queries";
 import type { Product } from "@/lib/types";
 
-type Item = { productId: number; amount: number; notes: string };
+type Item = { productId: number; amount: number; notes: string; priceAtSale?: number };
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
@@ -43,7 +43,6 @@ export default function OrderDetailPage() {
   React.useEffect(() => {
     if (order) {
       setCustomerName(order.customerName);
-      // pickupDate is now a date-only string (YYYY-MM-DD)
       setPickupDate(order.pickupDate ?? "");
       setOrderNotes(order.notes ?? "");
       setItems(
@@ -51,6 +50,7 @@ export default function OrderDetailPage() {
           productId: it.productId,
           amount: it.amount,
           notes: it.notes ?? "",
+          priceAtSale: typeof it.priceAtSale === "number" ? it.priceAtSale : undefined,
         }))
       );
     }
@@ -99,8 +99,8 @@ export default function OrderDetailPage() {
   }
 
   const total = items.reduce((sum, it) => {
-    const p = byId.get(it.productId);
-    return sum + (p ? p.price * it.amount : 0);
+    const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (byId.get(it.productId)?.price ?? 0);
+    return sum + price * it.amount;
   }, 0);
 
   async function onSave(e: React.FormEvent) {
@@ -119,6 +119,7 @@ export default function OrderDetailPage() {
           productId: it.productId,
           amount: it.amount,
           notes: it.notes || undefined,
+          priceAtSale: typeof it.priceAtSale === "number" ? it.priceAtSale : undefined,
         })),
       });
       toast.success("Order updated");
@@ -332,10 +333,24 @@ export default function OrderDetailPage() {
                       ) : (
                           items.map((it) => {
                             const p = byId.get(it.productId);
+                            const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (p?.price ?? 0);
                             return (
                               <TableRow key={it.productId}>
                                 <TableCell className="font-medium">{p ? p.name : `#${it.productId}`}</TableCell>
-                                <TableCell>{p ? formatIDR(p.price) : "—"}</TableCell>
+                                <TableCell>
+                                  <Input
+                                    inputMode="numeric"
+                                    value={typeof it.priceAtSale === "number" ? formatIDR(it.priceAtSale) : (p ? formatIDR(p.price) : "")}
+                                    min={0}
+                                    onChange={(e) => {
+                                      // Remove non-digit characters except comma and dot
+                                      const raw = e.target.value.replace(/[^\d.,]/g, "");
+                                      // Remove thousands separator and parse
+                                      const value = Number.parseInt(raw.replace(/[^\d]/g, "") || "0", 10);
+                                      setItems((prev) => prev.map((item) => item.productId === it.productId ? { ...item, priceAtSale: value } : item));
+                                    }}
+                                  />
+                                </TableCell>
                                 <TableCell className="w-[140px]">
                                   <Input
                                     inputMode="numeric"
@@ -355,7 +370,7 @@ export default function OrderDetailPage() {
                                     onChange={(e) => setItemNotes(it.productId, e.target.value)}
                                   />
                                 </TableCell>
-                                <TableCell>{p ? formatIDR(p.price * it.amount) : "—"}</TableCell>
+                                <TableCell>{formatIDR(price * it.amount)}</TableCell>
                               </TableRow>
                             );
                           })

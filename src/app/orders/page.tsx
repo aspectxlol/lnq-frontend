@@ -25,7 +25,10 @@ import type { Order } from "@/lib/types";
 type ViewMode = "list" | "calendar";
 
 function orderTotal(order: Order) {
-  return order.items.reduce((sum, it) => sum + it.amount * (it.product?.price ?? 0), 0);
+  return order.items.reduce((sum, it) => {
+    const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (it.product?.price ?? 0);
+    return sum + it.amount * price;
+  }, 0);
 }
 
 function getMonthDays(year: number, month: number) {
