@@ -15,7 +15,7 @@ const HealthCheckContext = React.createContext<HealthCheckContextValue | null>(n
 
 export function HealthCheckProvider({ children }: { children: React.ReactNode }) {
   const [isHealthy, setIsHealthy] = React.useState(true);
-  const [isChecking, setIsChecking] = React.useState(false);
+  const [isChecking, setIsChecking] = React.useState(true);
   const [lastCheck, setLastCheck] = React.useState<number | null>(null);
   const hasShownErrorRef = React.useRef(false);
 

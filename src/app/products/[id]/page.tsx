@@ -33,12 +33,14 @@ export default function ProductDetailPage() {
   const [description, setDescription] = React.useState("");
   const [price, setPrice] = React.useState("");
   const [image, setImage] = React.useState<File | null>(null);
+  const [removedExistingImage, setRemovedExistingImage] = React.useState(false);
 
   React.useEffect(() => {
     if (product) {
       setName(product.name);
       setDescription(product.description ?? "");
       setPrice(formatNumber(product.price));
+      setRemovedExistingImage(false);
     }
   }, [product]);
 
@@ -156,7 +158,8 @@ export default function ProductDetailPage() {
                   value={image}
                   onChange={setImage}
                   disabled={updateMutation.isPending}
-                  existingImageUrl={product?.imageId ? buildBackendUrl(`/api/images/${product.imageId}`) : null}
+                  existingImageUrl={!removedExistingImage && product?.imageId ? buildBackendUrl(`/api/images/${product.imageId}`) : null}
+                  onRemoveExisting={() => setRemovedExistingImage(true)}
                 />
               </div>
 

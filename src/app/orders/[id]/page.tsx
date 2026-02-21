@@ -4,6 +4,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { toast } from "sonner";
+import { Printer, Trash2 } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,10 @@ export default function OrderDetailPage() {
     );
   }
 
+  function removeItem(idx: number) {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   const total = items.reduce((sum, it) => {
     if (it.itemType === 'product') {
       let price = typeof it.priceAtSale === "number" ? it.priceAtSale : (byId.get(it.productId)?.price ?? 0);
@@ -195,11 +200,33 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function onPrint() {
+    try {
+      await printMutation.mutateAsync(id);
+      toast.success("Print job sent");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to print order");
+    }
+  }
+
 
   return (
     <main className={styles.container}>
       <div className={styles.pageHeader}>
         <h1 className={styles.title}>Order #{id}</h1>
+        <div className={styles.actionsRow}>
+          <Button
+            variant="outline"
+            onClick={onPrint}
+            disabled={loading || printMutation.isPending}
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            {printMutation.isPending ? "Printing…" : "Print"}
+          </Button>
+          <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={loading}>
+            Delete
+          </Button>
+        </div>
       </div>
       <Card>
         <CardContent>
@@ -349,7 +376,7 @@ export default function OrderDetailPage() {
                   <TableBody>
                     {items.length === 0 ? (
                       <TableRow>
-                          <TableCell colSpan={5} className="text-muted-foreground">
+                          <TableCell colSpan={6} className="text-muted-foreground">
                             No items yet.
                           </TableCell>
                         </TableRow>
@@ -359,7 +386,7 @@ export default function OrderDetailPage() {
                               const p = byId.get(it.productId);
                               const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (p?.price ?? 0);
                               return (
-                                <TableRow key={`product-${it.productId}`}>
+                                <TableRow key={`product-${idx}`}>
                                   <TableCell className="font-medium">{p ? p.name : `#${it.productId}`}</TableCell>
                                   <TableCell>
                                     <Input
@@ -392,12 +419,17 @@ export default function OrderDetailPage() {
                                     />
                                   </TableCell>
                                   <TableCell>{formatIDR(price * it.amount)}</TableCell>
+                                  <TableCell>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
+                                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </TableCell>
                                 </TableRow>
                               );
                             } else {
                               // custom item
                               return (
-                                <TableRow key={`custom-${it.customName}`}>
+                                <TableRow key={`custom-${idx}`}>
                                   <TableCell className="font-medium">{it.customName}</TableCell>
                                   <TableCell>
                                     <Input
@@ -419,6 +451,11 @@ export default function OrderDetailPage() {
                                     />
                                   </TableCell>
                                   <TableCell>{formatIDR(it.customPrice)}</TableCell>
+                                  <TableCell>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
+                                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </TableCell>
                                 </TableRow>
                               );
                             }

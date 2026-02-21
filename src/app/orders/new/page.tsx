@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,6 +94,10 @@ export default function NewOrderPage() {
     setItems((prev) =>
       prev.map((it, i) => (i === idx ? { ...it, notes } : it)),
     );
+  }
+
+  function removeItem(idx: number) {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
   const total = items.reduce((sum, it) => {
@@ -232,12 +237,13 @@ export default function NewOrderPage() {
                     <TableHead>Qty</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead>Line total</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-muted-foreground">
+                      <TableCell colSpan={6} className="text-muted-foreground">
                         No items yet.
                       </TableCell>
                     </TableRow>
@@ -247,7 +253,7 @@ export default function NewOrderPage() {
                           const p = byId.get(it.productId);
                           const price = typeof it.priceAtSale === "number" ? it.priceAtSale : (p?.price ?? 0);
                           return (
-                          <TableRow key={`product-${it.productId}`}>
+                          <TableRow key={`product-${idx}`}>
                             <TableCell className="font-medium">{p ? p.name : `#${it.productId}`}</TableCell>
                             <TableCell>
                               <Input
@@ -280,12 +286,17 @@ export default function NewOrderPage() {
                               />
                             </TableCell>
                             <TableCell>{formatIDR(price * it.amount)}</TableCell>
+                            <TableCell>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         );
                       } else {
                         // custom item
                         return (
-                          <TableRow key={`custom-${it.customName}`}>
+                          <TableRow key={`custom-${idx}`}>
                             <TableCell className="font-medium">{it.customName}</TableCell>
                             <TableCell>
                               <Input
@@ -307,6 +318,11 @@ export default function NewOrderPage() {
                               />
                             </TableCell>
                             <TableCell>{formatIDR(it.customPrice)}</TableCell>
+                            <TableCell>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         );
                       }

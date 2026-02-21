@@ -20,6 +20,22 @@ async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    // Try to parse JSON error response for a user-friendly message
+    if (text) {
+      try {
+        const errJson = JSON.parse(text);
+        if (typeof errJson.message === "string") {
+          throw new Error(errJson.message);
+        }
+      } catch (parseErr) {
+        // If parseErr is the Error we just created (parsed message), rethrow it
+        if (parseErr instanceof SyntaxError) {
+          // JSON.parse failed — fall through to throw raw text below
+        } else {
+          throw parseErr;
+        }
+      }
+    }
     throw new Error(text || `Request failed (${res.status})`);
   }
 

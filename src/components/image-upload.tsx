@@ -11,9 +11,10 @@ interface ImageUploadProps {
   onChange: (file: File | null) => void;
   disabled?: boolean;
   existingImageUrl?: string | null;
+  onRemoveExisting?: () => void;
 }
 
-export function ImageUpload({ value, onChange, disabled, existingImageUrl }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, disabled, existingImageUrl, onRemoveExisting }: ImageUploadProps) {
   const [isDragging, setIsDragging] = React.useState(false);
   const [preview, setPreview] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -71,6 +72,9 @@ export function ImageUpload({ value, onChange, disabled, existingImageUrl }: Ima
     onChange(null);
     if (inputRef.current) {
       inputRef.current.value = "";
+    }
+    if (!value && existingImageUrl && onRemoveExisting) {
+      onRemoveExisting();
     }
   };
 
