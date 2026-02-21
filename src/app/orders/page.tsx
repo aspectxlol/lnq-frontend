@@ -4,16 +4,24 @@ import * as React from "react";
 import Link from "next/link";
 
 import { toast } from "sonner";
-import { CalendarDays, ChevronLeft, ChevronRight, List } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, List, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -23,6 +31,8 @@ import { useOrders, useDeleteOrder } from "@/lib/queries";
 import type { Order } from "@/lib/types";
 
 type ViewMode = "list" | "calendar";
+type SortField = "id" | "customer" | "pickupDate" | "total";
+type SortDir = "asc" | "desc";
 
 function orderTotal(order: Order) {
   return order.items.reduce((sum, it) => {
@@ -33,6 +43,39 @@ function orderTotal(order: Order) {
       return sum + it.customPrice;
     }
   }, 0);
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function isPastOrder(order: Order) {
+  if (!order.pickupDate) return false;
+  return order.pickupDate < todayKey();
+}
+
+function sortOrders(orders: Order[], field: SortField, dir: SortDir) {
+  const sorted = [...orders];
+  sorted.sort((a, b) => {
+    let cmp = 0;
+    switch (field) {
+      case "id":
+        cmp = a.id - b.id;
+        break;
+      case "customer":
+        cmp = a.customerName.localeCompare(b.customerName);
+        break;
+      case "pickupDate":
+        cmp = (a.pickupDate ?? "").localeCompare(b.pickupDate ?? "");
+        break;
+      case "total":
+        cmp = orderTotal(a) - orderTotal(b);
+        break;
+    }
+    return dir === "asc" ? cmp : -cmp;
+  });
+  return sorted;
 }
 
 function getMonthDays(year: number, month: number) {
@@ -72,6 +115,54 @@ export default function OrdersPage() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+
+  // Filters & sort
+  const [search, setSearch] = React.useState("");
+  const [hidePast, setHidePast] = React.useState(true);
+  const [sortField, setSortField] = React.useState<SortField>("id");
+  const [sortDir, setSortDir] = React.useState<SortDir>("desc");
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === "asc"
+      ? <ArrowUp className="inline h-3 w-3 ml-1" />
+      : <ArrowDown className="inline h-3 w-3 ml-1" />;
+  };
+
+  const filteredOrders = React.useMemo(() => {
+    let result = orders;
+
+    // Hide past orders
+    if (hidePast) {
+      result = result.filter((o) => !isPastOrder(o));
+    }
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((o) =>
+        o.customerName.toLowerCase().includes(q) ||
+        String(o.id).includes(q) ||
+        o.items.some((it) =>
+          it.itemType === "product"
+            ? (it.product?.name ?? "").toLowerCase().includes(q)
+            : it.customName.toLowerCase().includes(q)
+        )
+      );
+    }
+
+    // Sort
+    return sortOrders(result, sortField, sortDir);
+  }, [orders, hidePast, search, sortField, sortDir]);
 
   // Group orders by pickup date for calendar view
   const ordersByDate = React.useMemo(() => {
@@ -162,18 +253,48 @@ export default function OrdersPage() {
       {viewMode === "list" ? (
         <Card>
           <CardHeader>
-            <CardTitle>History</CardTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle>History</CardTitle>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search orders..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-8 w-full sm:w-[200px]"
+                  />
+                </div>
+                <Select value={hidePast ? "upcoming" : "all"} onValueChange={(v) => setHidePast(v === "upcoming")}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="upcoming">Upcoming only</SelectItem>
+                    <SelectItem value="all">All orders</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className={styles.tableWrap}>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Pickup Date</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("id")}>
+                      ID<SortIcon field="id" />
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("customer")}>
+                      Customer<SortIcon field="customer" />
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("pickupDate")}>
+                      Pickup Date<SortIcon field="pickupDate" />
+                    </TableHead>
                     <TableHead>Items</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("total")}>
+                      Total<SortIcon field="total" />
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -201,14 +322,14 @@ export default function OrdersPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : orders.length === 0 ? (
+                  ) : filteredOrders.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-muted-foreground">
-                        No orders yet.
+                        {orders.length === 0 ? "No orders yet." : "No orders match your filters."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    orders.map((o) => (
+                    filteredOrders.map((o) => (
                       <TableRow key={o.id}>
                         <TableCell className="font-medium">
                           <Link href={`/orders/${o.id}`} className="hover:underline">
@@ -274,62 +395,78 @@ export default function OrdersPage() {
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div
                     key={day}
-                    className="text-center text-xs font-medium text-muted-foreground py-2"
+                    className="text-center text-xs font-medium text-muted-foreground py-2 border-b"
                   >
                     {day}
                   </div>
                 ))}
                 {Array.from({ length: 35 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square" />
+                  <Skeleton key={i} className="min-h-[90px] rounded-md" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div
                     key={day}
-                    className="text-center text-xs font-medium text-muted-foreground py-2"
+                    className="text-center text-xs font-semibold text-muted-foreground py-2 bg-muted/50"
                   >
                     {day}
                   </div>
                 ))}
                 {calendarDays.map((date, i) => {
                   if (!date) {
-                    return <div key={`empty-${i}`} className="aspect-square" />;
+                    return <div key={`empty-${i}`} className="min-h-[90px] bg-muted/20" />;
                   }
                   const dateKey = formatDateKey(date);
                   const dayOrders = ordersByDate.get(dateKey) || [];
                   const isToday = formatDateKey(new Date()) === dateKey;
+                  const isPast = dateKey < todayKey();
 
                   return (
                     <div
                       key={dateKey}
-                      className={`aspect-square border rounded-md p-1 flex flex-col overflow-hidden ${
-                        isToday ? "border-primary bg-primary/5" : "border-border"
+                      className={`min-h-[90px] p-1.5 flex flex-col bg-background transition-colors ${
+                        isToday
+                          ? "bg-primary/5 ring-2 ring-inset ring-primary/40"
+                          : isPast
+                            ? "bg-muted/10"
+                            : ""
                       }`}
                     >
-                      <span
-                        className={`text-xs font-medium ${
-                          isToday ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      >
-                        {date.getDate()}
-                      </span>
-                      <div className="flex-1 overflow-y-auto space-y-0.5 mt-0.5">
-                        {dayOrders.slice(0, 3).map((order) => (
+                      <div className="flex items-center justify-between mb-1">
+                        <span
+                          className={`text-xs font-medium leading-none ${
+                            isToday
+                              ? "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                              : isPast
+                                ? "text-muted-foreground/60"
+                                : "text-foreground"
+                          }`}
+                        >
+                          {date.getDate()}
+                        </span>
+                        {dayOrders.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            {dayOrders.length} order{dayOrders.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        {dayOrders.map((order) => (
                           <Link
                             key={order.id}
                             href={`/orders/${order.id}`}
-                            className="block text-xs p-1 rounded bg-primary/10 hover:bg-primary/20 truncate"
+                            className="block text-xs px-1.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/10 group"
                           >
-                            {order.customerName}
+                            <span className="font-medium block truncate group-hover:underline">
+                              {order.customerName}
+                            </span>
+                            <span className="text-muted-foreground text-[10px]">
+                              {order.items.length} item{order.items.length !== 1 ? "s" : ""} · {formatIDR(orderTotal(order))}
+                            </span>
                           </Link>
                         ))}
-                        {dayOrders.length > 3 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{dayOrders.length - 3} more
-                          </span>
-                        )}
                       </div>
                     </div>
                   );

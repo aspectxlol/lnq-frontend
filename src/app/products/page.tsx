@@ -5,10 +5,18 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { toast } from "sonner";
-import { LayoutGrid, List } from "lucide-react";
+import { ArrowDown, ArrowUp, LayoutGrid, List, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,14 +30,70 @@ import { formatIDR } from "@/lib/format";
 import { styles } from "@/lib/styles";
 import { useProducts, useDeleteProduct } from "@/lib/queries";
 import { buildBackendUrl } from "@/lib/backend";
+import type { Product } from "@/lib/types";
 
 type ViewMode = "list" | "card";
+type SortField = "name" | "price" | "created";
+type SortDir = "asc" | "desc";
+
+function sortProducts(products: Product[], field: SortField, dir: SortDir) {
+  const sorted = [...products];
+  sorted.sort((a, b) => {
+    let cmp = 0;
+    switch (field) {
+      case "name":
+        cmp = a.name.localeCompare(b.name);
+        break;
+      case "price":
+        cmp = a.price - b.price;
+        break;
+      case "created":
+        cmp = a.createdAt.localeCompare(b.createdAt);
+        break;
+    }
+    return dir === "asc" ? cmp : -cmp;
+  });
+  return sorted;
+}
 
 export default function ProductsPage() {
   const { data: products = [], isLoading: loading } = useProducts();
   const deleteMutation = useDeleteProduct();
   const [deleteId, setDeleteId] = React.useState<number | null>(null);
   const [viewMode, setViewMode] = React.useState<ViewMode>("list");
+
+  // Filters & sort
+  const [search, setSearch] = React.useState("");
+  const [sortField, setSortField] = React.useState<SortField>("name");
+  const [sortDir, setSortDir] = React.useState<SortDir>("asc");
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir(field === "created" ? "desc" : "asc");
+    }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === "asc"
+      ? <ArrowUp className="inline h-3 w-3 ml-1" />
+      : <ArrowDown className="inline h-3 w-3 ml-1" />;
+  };
+
+  const filteredProducts = React.useMemo(() => {
+    let result = products;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q)
+      );
+    }
+    return sortProducts(result, sortField, sortDir);
+  }, [products, search, sortField, sortDir]);
 
   async function onDeleteConfirm() {
     if (!deleteId) return;
@@ -77,16 +141,33 @@ export default function ProductsPage() {
       {viewMode === "list" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Catalog</CardTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle>Catalog</CardTitle>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search products..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8 w-full sm:w-[200px]"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className={styles.tableWrap}>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                      Name<SortIcon field="name" />
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("price")}>
+                      Price<SortIcon field="price" />
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("created")}>
+                      Created<SortIcon field="created" />
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -108,14 +189,14 @@ export default function ProductsPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : products.length === 0 ? (
+                  ) : filteredProducts.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-muted-foreground">
-                        No products yet.
+                        {products.length === 0 ? "No products yet." : "No products match your search."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    products.map((p) => (
+                    filteredProducts.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">
                           <Link href={`/products/${p.id}`} className="hover:underline">
@@ -150,6 +231,38 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
       ) : (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Select
+              value={`${sortField}-${sortDir}`}
+              onValueChange={(v) => {
+                const [f, d] = v.split("-") as [SortField, SortDir];
+                setSortField(f);
+                setSortDir(d);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Name A–Z</SelectItem>
+                <SelectItem value="name-desc">Name Z–A</SelectItem>
+                <SelectItem value="price-asc">Price low–high</SelectItem>
+                <SelectItem value="price-desc">Price high–low</SelectItem>
+                <SelectItem value="created-desc">Newest first</SelectItem>
+                <SelectItem value="created-asc">Oldest first</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {loading ? (
             Array.from({ length: 8 }).map((_, i) => (
@@ -167,8 +280,14 @@ export default function ProductsPage() {
                 No products yet.
               </CardContent>
             </Card>
+          ) : filteredProducts.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="p-6 text-center text-muted-foreground">
+                No products match your search.
+              </CardContent>
+            </Card>
           ) : (
-            products.map((p) => (
+            filteredProducts.map((p) => (
               <Card key={p.id} className="overflow-hidden group">
                 <Link href={`/products/${p.id}`} className="block">
                   <div className="aspect-square relative bg-muted">
@@ -213,6 +332,7 @@ export default function ProductsPage() {
               </Card>
             ))
           )}
+        </div>
         </div>
       )}
 
